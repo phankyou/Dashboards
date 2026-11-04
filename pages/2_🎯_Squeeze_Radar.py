@@ -157,3 +157,79 @@ for asset_key, config in ASSET_CONFIG.items():
     if data:
         spot, zero_gamma, result = data
         display_asset_card(asset_key, config, spot, zero_gamma, result)
+
+st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
+
+# --- Setup Optimal Haussier / Baissier ---
+st.subheader("🎯 Setup optimal — Conditions de marché")
+st.caption("Confluence des signaux volatilité, gamma et flux pour valider un biais directionnel")
+
+_sq_col1, _sq_col2 = st.columns(2)
+
+with _sq_col1:
+    st.markdown("""
+<div style="background:rgba(63,185,80,0.08);border:1px solid #3FB950;border-radius:12px;padding:20px">
+  <div style="font-size:1.05rem;font-weight:700;color:#3FB950;margin-bottom:14px">🟢 Setup HAUSSIER optimal</div>
+  <div style="font-size:0.84rem;line-height:1.9;color:#E6EDF3">
+    ✅ <b>VPIN &gt; 0.60</b> <span style="color:#8B949E">— flux informé côté acheteur</span><br>
+    ✅ <b>GEX positif</b> <span style="color:#8B949E">— dealers long gamma, marché stabilisé</span><br>
+    ✅ <b>VIX term structure en contango</b> <span style="color:#8B949E">— VIX1M &lt; VIX3M</span><br>
+    ✅ <b>Skew baissier (&lt; −10)</b> <span style="color:#8B949E">— peu de protection achetée</span><br>
+    ✅ <b>VVIX stable ou en baisse</b> <span style="color:#8B949E">— vol de vol contenue</span>
+  </div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #30363D;font-size:0.82rem;font-weight:600;color:#3FB950">
+    → Momentum Pinball LONG confirmé
+  </div>
+</div>""", unsafe_allow_html=True)
+
+with _sq_col2:
+    st.markdown("""
+<div style="background:rgba(248,81,73,0.08);border:1px solid #F85149;border-radius:12px;padding:20px">
+  <div style="font-size:1.05rem;font-weight:700;color:#F85149;margin-bottom:14px">🔴 Setup BAISSIER optimal</div>
+  <div style="font-size:0.84rem;line-height:1.9;color:#E6EDF3">
+    ✅ <b>VPIN &gt; 0.60</b> <span style="color:#8B949E">— flux informé côté vendeur</span><br>
+    ✅ <b>GEX négatif</b> <span style="color:#8B949E">— dealers short gamma, mouvements amplifiés</span><br>
+    ✅ <b>VIX term structure inversée</b> <span style="color:#8B949E">— VIX1M &gt; VIX3M</span><br>
+    ✅ <b>Skew haussier (&gt; 0)</b> <span style="color:#8B949E">— protection institutionnelle achetée</span><br>
+    ✅ <b>VVIX en hausse</b> <span style="color:#8B949E">— incertitude sur vol future</span>
+  </div>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px solid #30363D;font-size:0.82rem;font-weight:600;color:#F85149">
+    → Momentum Pinball SHORT confirmé
+  </div>
+</div>""", unsafe_allow_html=True)
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+with st.expander("📖 Analyse détaillée des indicateurs", expanded=False):
+    st.markdown("""
+**VPIN — Volume-synchronized Probability of Informed Trading**  
+Mesure le déséquilibre buy/sell sur des buckets de volume synchronisé (non temporel).  
+`VPIN = |V_buy − V_sell| / V_total` sur N buckets  
+• `> 0.70` → flux informé dominant  
+• `0.40–0.60` → marché équilibré, faible conviction  
+• `< 0.30` → peu de directionnalité  
+⚠️ VPIN seul n'indique pas la direction — combiner avec OBI ou le régime gamma pour qualifier le biais.
+
+**VVIX — Volatilité de la volatilité**  
+Signal *avancé* de 1 à 2 jours sur les mouvements du VIX.  
+• `VVIX > 100` → instabilité de régime imminente  
+• VVIX stable/↓ dans un setup haussier = confirmation de la stabilité du régime  
+• VVIX ↑ fort = prudence, même si les autres signaux sont bullish
+
+**SKEW — Protection institutionnelle**  
+Coût relatif des puts OTM vs calls OTM sur SPX. Un Skew élevé = les institutionnels achètent de la couverture tail-risk.  
+• `< 110` → peu de protection = environnement bull  
+• `> 140` → protection achetée = méfiance institutionnelle  
+Combiné à GEX négatif, un Skew élevé renforce fortement la conviction baissière.
+
+**VIX Term Structure — Contango vs Inversion**  
+• **Contango** (VIX1M < VIX3M) → régime normal, favorable aux setups longs  
+• **Inversion** (VIX1M > VIX3M) → stress immédiat, confirme les setups courts  
+Une inversion soudaine après une période de contango est souvent précurseur d'un sell-off.
+
+**Score de confluence**  
+✅✅✅ (3/5) → setup de qualité  
+✅✅✅✅✅ (5/5) → confluence maximale → conviction élevée pour Momentum Pinball  
+< 3/5 → signal ambigu → ne pas forcer le trade
+""")
