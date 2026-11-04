@@ -6,3 +6,4 @@ st.title("📊 Mes Dashboards")
 st.markdown("Utilise le menu à gauche pour naviguer entre :")
 st.markdown("- **📰 News Dashboard** — Fear & Greed, analyse fondamentale, calendrier macro, alertes megacaps")
 st.markdown("- **🎯 Squeeze Radar** — détection de gamma squeeze sur NQ, ES, GC")
+- **🌊 OrderFlow** — OBI & Kyle Lambda · biais directionnel NQ/ES/RTY · 1h & 4h
