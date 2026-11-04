@@ -158,6 +158,100 @@ for asset_key, config in ASSET_CONFIG.items():
         spot, zero_gamma, result = data
         display_asset_card(asset_key, config, spot, zero_gamma, result)
 
+
+st.markdown("<br>", unsafe_allow_html=True)
+st.divider()
+
+# =============================================
+# OBI + VPIN CONFLUENCE (SqueezeRadar)
+# =============================================
+st.subheader("\U0001f30a Confluence OBI + VPIN \u2014 Flux inform\u00e9")
+st.caption("D\u00e9s\u00e9quilibre directionnel 1h \u00b7 Probabilit\u00e9 flux institutionnel \u00b7 NQ \u00b7 ES \u00b7 GC")
+
+import numpy as _np_sr
+
+_SR_TICKERS  = {"NQ": "NQ=F", "ES": "ES=F", "GC": "GC=F"}
+_SR_OBI_WIN  = 5
+_SR_OBI_THR  = 0.05
+_SR_VPIN_WIN = 20
+_SR_VPIN_THR = 0.60
+
+@st.cache_data(ttl=900, show_spinner=False)
+def _load_sr_flow(ticker):
+    try:
+        import yfinance as _yf
+        from datetime import datetime as _dt, timedelta as _td
+        start = (_dt.today() - _td(days=720)).strftime("%Y-%m-%d")
+        df = _yf.download(ticker, start=start, interval="1h",
+                          progress=False, auto_adjust=True)
+        if df.empty or len(df) < 30:
+            return None
+        if isinstance(df.columns, __import__('pandas').MultiIndex):
+            df.columns = df.columns.get_level_values(0)
+        df = df[['Open','High','Low','Close','Volume']].dropna()
+        hl   = (df['High'] - df['Low']).replace(0, _np_sr.nan)
+        bp   = ((df['Close'] - df['Open']) / hl).fillna(0)
+        obi  = float(bp.rolling(_SR_OBI_WIN, min_periods=2).mean().iloc[-1])
+        v_buy  = df['Volume'] * (df['Close'] > df['Open']).astype(float)
+        v_sell = df['Volume'] * (df['Close'] < df['Open']).astype(float)
+        vtot   = df['Volume'].replace(0, _np_sr.nan)
+        vpin   = float(((v_buy - v_sell).abs() / vtot)
+                       .rolling(_SR_VPIN_WIN, min_periods=5).mean().iloc[-1])
+        return {"obi": obi, "vpin": vpin}
+    except Exception:
+        return None
+
+_sr_flow = {}
+with st.spinner("Chargement OBI / VPIN\u2026"):
+    for _instr, _ticker in _SR_TICKERS.items():
+        _sr_flow[_instr] = _load_sr_flow(_ticker)
+
+_sr_cols = st.columns(3)
+for _i, _instr in enumerate(["NQ", "ES", "GC"]):
+    _r = _sr_flow.get(_instr)
+    with _sr_cols[_i]:
+        if _r is None:
+            st.markdown(
+                f'<div style="background:#161B22;border:1px solid #30363D;'
+                f'border-radius:10px;padding:16px;text-align:center">'
+                f'<div style="font-size:1.1rem;font-weight:700;color:#8B949E">{_instr}</div>'
+                f'<div style="color:#8B949E;font-size:0.82rem;margin-top:8px">donn\u00e9es indisponibles</div>'
+                f'</div>', unsafe_allow_html=True)
+            continue
+        _obi  = _r["obi"]
+        _vpin = _r["vpin"]
+        if _obi > _SR_OBI_THR:
+            _oc, _ol, _oe = "#3FB950", "ACHETEUR", "\U0001f7e2"
+        elif _obi < -_SR_OBI_THR:
+            _oc, _ol, _oe = "#F85149", "VENDEUR",  "\U0001f534"
+        else:
+            _oc, _ol, _oe = "#8B949E", "NEUTRE",   "\u26aa"
+        if _vpin >= 0.70:
+            _vc, _vl = "#F0A500", "\u00c9LEV\u00c9 \U0001f525"
+        elif _vpin >= _SR_VPIN_THR:
+            _vc, _vl = "#BC8CFF", "MOD\u00c9R\u00c9"
+        else:
+            _vc, _vl = "#8B949E", "FAIBLE"
+        _conf   = abs(_obi) > _SR_OBI_THR and _vpin >= _SR_VPIN_THR
+        _border = _oc if _conf else "#30363D"
+        _obi_s  = f"+{_obi:.3f}" if _obi >= 0 else f"{_obi:.3f}"
+        _conf_html = (
+            f'<div style="margin-top:10px;font-size:0.78rem;font-weight:700;color:{_oc}">\u2705 Confluence confirm\u00e9e</div>'
+            if _conf else
+            '<div style="margin-top:10px;font-size:0.78rem;color:#8B949E">signal partiel</div>'
+        )
+        st.markdown(
+            f'<div style="background:#161B22;border:1px solid {_border};'
+            f'border-radius:10px;padding:16px;text-align:center">'
+            f'<div style="font-size:1.2rem;font-weight:700;color:{_oc}">{_oe} {_instr}</div>'
+            f'<div style="color:{_oc};font-size:0.9rem;margin:4px 0">{_ol}</div>'
+            f'<div style="color:#8B949E;font-size:0.82rem;margin-top:10px">'
+            f'OBI (5b)\u00a0<span style="color:#E6EDF3;font-weight:600">{_obi_s}</span></div>'
+            f'<div style="color:#8B949E;font-size:0.82rem;margin-top:4px">'
+            f'VPIN\u00a0<span style="color:{_vc};font-weight:600">{_vpin:.2f}</span>\u00a0\u2014 {_vl}</div>'
+            f'{_conf_html}</div>',
+            unsafe_allow_html=True)
+
 st.markdown("<br>", unsafe_allow_html=True)
 st.divider()
 
